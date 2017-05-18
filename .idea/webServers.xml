@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="WebServers">
+    <option name="servers">
+      <webServer id="d4218ca0-dac7-4ef0-8e86-266e870c4e72" name="UPPMAX" url="http://jiansun@milou.uppmax.uu.se">
+        <fileTransfer host="jiansun@milou.uppmax.uu.se" port="22" rootFolder="/pica/h1/jiansun" accessType="SFTP">
+          <advancedOptions>
+            <advancedOptions dataProtectionLevel="Private" />
+          </advancedOptions>
+          <option name="port" value="22" />
+        </fileTransfer>
+      </webServer>
+      <webServer id="0cdfe32f-0fba-4982-aa82-80e94451be20" name="Rackham" url="http://jiansun@rackham.uppmax.uu.se">
+        <fileTransfer host="jiansun@rackham.uppmax.uu.se" port="22" rootFolder="/pica/h1/jiansun" accessType="SFTP">
+          <advancedOptions>
+            <advancedOptions dataProtectionLevel="Private" />
+          </advancedOptions>
+          <option name="port" value="22" />
+        </fileTransfer>
+      </webServer>
+    </option>
+  </component>
+</project>
