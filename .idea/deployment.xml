@@ -1,7 +1,14 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
-  <component name="PublishConfigData" autoUpload="Always" serverName="UPPMAX" createEmptyFolders="true">
+  <component name="PublishConfigData" autoUpload="Always" serverName="Rackham" createEmptyFolders="true">
     <serverData>
+      <paths name="Rackham">
+        <serverdata>
+          <mappings>
+            <mapping deploy="/private/DeployedProjects/BalticSea" local="$PROJECT_DIR$" web="/" />
+          </mappings>
+        </serverdata>
+      </paths>
       <paths name="UPPMAX">
         <serverdata>
           <mappings>

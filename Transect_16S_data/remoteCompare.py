@@ -7,9 +7,9 @@ import deepLearningTest
 import paramSVR
 from sklearn import preprocessing
 
-py.sign_in('sunjiannankai', 'r8kdW8nbxiw5HJeCehBj')
+# py.sign_in('sunjiannankai', 'r8kdW8nbxiw5HJeCehBj')
 
-# py.sign_in('JianSun', 'AmAEUGYZCUR2D1dxFCZk')
+py.sign_in('JianSun', 'AmAEUGYZCUR2D1dxFCZk')
 
 if __name__ == '__main__':
     funNum = 3  # the number of function for deep learning method 1:normal,2:more neurons 3: more layers

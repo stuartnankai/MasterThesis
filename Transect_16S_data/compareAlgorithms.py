@@ -3,6 +3,8 @@ import pandas as pd
 import numpy as np
 import plotly.plotly as py
 from plotly.graph_objs import *
+from sklearn.decomposition import RandomizedPCA
+
 import deepLearningTest
 from sklearn.cross_validation import train_test_split
 from sklearn import preprocessing
@@ -13,6 +15,7 @@ from sklearn.model_selection import train_test_split
 import paramSVR
 import testDL
 import tempELM
+import reduceDim
 
 # py.sign_in('sunjiannankai', 'r8kdW8nbxiw5HJeCehBj')
 py.sign_in('JianSun', 'AmAEUGYZCUR2D1dxFCZk')
@@ -292,38 +295,142 @@ def drawFigure(predValue, realValue, methodName):
     plot_url = py.plot(fig)
 
 
+def testAlgorithms(isPCA, typeTrainDB, lableList, iteraNum, finalErrorSVR, finalErrorRF, finalErrorELM, figureTitle):
+    if not isPCA:
+        if typeTrainDB == 2:
+            temp1 = list(set(lableList))
+            x_axis_name = [(temp1.index(p) + 1) for p in temp1]
+            # lableList = x_axis_name
+    else:
+        x_axis_name = sorted(list(set(lableList)), reverse=True)
+
+    if isRemote:
+        writer1 = pd.ExcelWriter(
+            './Results/remoteResultForPlot_%s_type_%d_iteration_%d.xlsx' % (
+                targetList[i], typeTrainDB, iteraNum))
+        pd.DataFrame(lableList).to_excel(writer1, 'sheet1')
+        pd.DataFrame(finalErrorSVR).to_excel(writer1, 'sheet2')
+        pd.DataFrame(finalErrorRF).to_excel(writer1, 'sheet3')
+        pd.DataFrame(finalErrorELM).to_excel(writer1, 'sheet4')
+        # pd.DataFrame(finalErrorNN).to_excel(writer1, 'sheet5')
+        pd.DataFrame(x_axis_name).to_excel(writer1, 'sheet6')
+        pd.DataFrame(figureTitle.split(' ')).to_excel(writer1, 'sheet7')
+        writer1.save()
+    else:
+        trace1 = {
+            "x": lableList,
+            "y": finalErrorSVR,
+            "line": {"color": "rgba(102,194,165,1)"},
+            "name": "SVR",
+            "type": "box",
+            "xaxis": "x",
+            "yaxis": "y"
+        }
+        trace2 = {
+            "x": lableList,
+            "y": finalErrorRF,
+            "line": {"color": "rgba(141,160,203,1)"},
+            "name": "Random Forest",
+            "type": "box",
+            "xaxis": "x",
+            "yaxis": "y"
+        }
+        # trace3 = {
+        #     "x": lableList,
+        #     "y": finalErrorNN,
+        #     "line": {"color": "rgba(181,130,233,1)"},
+        #     "name": "Deep Learning",
+        #     "type": "box",
+        #     "xaxis": "x",
+        #     "yaxis": "y"
+        # }
+        trace4 = {
+            "x": lableList,
+            "y": finalErrorELM,
+            "line": {"color": "rgba(121,110,193,1)"},
+            "name": "ELM",
+            "type": "box",
+            "xaxis": "x",
+            "yaxis": "y"
+        }
+        data = Data([trace1, trace2, trace4])
+        layout = {
+            "boxmode": "group",
+            "margin": {
+                "r": 10,
+                "t": 25,
+                "b": 40,
+                "l": 60
+            },
+            "title": figureTitle,
+            "xaxis": {
+                "categoryarray": x_axis_name,
+                "categoryorder": "array",
+                "domain": [0, 1],
+                "title": targetList[i],
+                "type": "category"
+            },
+            "yaxis": {
+                "domain": [0, 1],
+                "title": "RMSE-Root mean square error"
+            }
+        }
+        fig = Figure(data=data, layout=layout)
+        plot_url = py.plot(fig)
+    end = time.time()
+    print("Time: %d seconds " % int((end - start)))
+
+
 if __name__ == '__main__':
 
     funNum = 3  # the number of function for deep learning method 1:normal,2:more neurons 3: more layers
     start = time.time()
-    # targetNormal = True  # the target is normalized or not
-    dataFile = [900,850,800,750]
+    # targetNormal = True  # the value of target is normalized or not
+    # dataFile = [950, 900, 850, 800, 750]
+    dataFile = [950]
+    # componentsList = [10,20,30]
+    # componentsList = [0.25, 0.5, 0.75, 0.99]
+    componentsList = [0.3,0.5,0.7,0.9]
     iteraNum = 10  # the number of iteration
-    targetList = ['salinity']
+    # targetList = ['salinity']
+    targetList = ['NO3']
     # targetList = ['salinity', 'Depth', 'Temperature', 'O2', 'PO4', 'SiO2', 'NO2', 'NO3']
     fillByKnn = pd.read_excel('./Training Data/WaterSamplesNoNull.xlsx')
     isRegression = False
     isCheckPara = False
     targetNormal = isCheckPara
-    typeTrainDB = 1  # 1: only OTUs 2: only easy_get para 3: OUT + easy_get
+    isScale = True
+    # isPCA = False
+    isPCA = True
+    isRemote = False
+    typeTrainDB = 4  # 1: only OTUs 2: only easy_get para 3: OUT + easy_get 4: merged OTU
+    sizeFile = 950
+    normalMethod = 2  # 1, normalization, 2, scale, 3, minmaxscale
+    targetLevel = 2
+    isdelete = False
+    minNum = 0
     if typeTrainDB == 1:
         figureTitle = "The reliability of SVR, Random Forest and NN. Use OTU only"
+        if isPCA:
+            figureTitle = "The reliability of SVR, Random Forest and NN. Use OTU only with PCA. Data Size: %d " % sizeFile
     elif typeTrainDB == 2:
         figureTitle = "The reliability of SVR, Random Forest and NN. Use Easy-get parameters only"
         dataFile = [(dataFile.index(d) + 1) * 1000 for d in dataFile]
+        if isPCA:
+            figureTitle = "The reliability of SVR, Random Forest and NN. Use Easy-get parameters with PCA"
     elif typeTrainDB == 3:
         figureTitle = "The reliability of SVR, Random Forest and NN. Use both OTU and Easy parameters"
-
-    # dataFile = [750]  # the max percentage of zeors
-    # dataFile = [990, 970, 950, 900, 850,800,750]
-
-    # dataFile = [1000,2000,3000,4000,5000]
-    # fillByKnn = pd.read_excel('./Training Data/FillByKnn.xlsx')
+        if isPCA:
+            figureTitle = "The reliability of SVR, Random Forest and NN. Use both OTU and Easy parameters with PCA"
+    elif typeTrainDB == 4:
+        figureTitle = "The reliability of SVR, Random Forest and NN. Use merged OTU"
+        if isPCA:
+            figureTitle = "The reliability of SVR, Random Forest and NN. Use Use merged OTU and PCA"
     lableList = []  # the target's name
     finalErrorRF = []  # Random forest
     finalErrorSVR = []  # SVR
     finalErrorNN = []  # deeplearning
-    finalErrorELM = [] # ELM
+    finalErrorELM = []  # ELM
 
     # regression analysis for each parameters
     if isCheckPara:
@@ -546,52 +653,212 @@ if __name__ == '__main__':
             subCol = fillByKnn.loc[:, targetList[i]]
             if targetNormal:
                 subCol = preprocessing.MinMaxScaler().fit_transform(subCol)
-            # print("This is subCol: ", subCol)
+            # print("This is subCol: ", subCol.values)
             sizeName = 0
-            for fileName in dataFile:
-                sizeName = fileName
-                lableList += iteraNum * [str(fileName / 1000.0)]
-                errorNN = []
-                errorRF = []
-                errorSVR = []
-                errorELM = []
+            if isPCA:
                 if typeTrainDB == 1:
                     trainData = pd.read_excel(
-                        './Training Data/newWaterSamples_%d.xlsx' % fileName)
+                        './Training Data/newWaterSamples_%d.xlsx' % sizeFile)  # Use easy parameters as training data
                 elif typeTrainDB == 2:
                     trainData = pd.read_excel(
                         './Training Data/easy_get_para.xlsx')
                 elif typeTrainDB == 3:
                     trainData = pd.read_excel(
-                        './Training Data/OTUwithEasyPara_%d.xlsx' % fileName)  # Use easy parameters as training data
-
+                        './Training Data/OTUwithEasyPara_1000.xlsx')
+                elif typeTrainDB == 4:
+                    trainData = pd.read_excel(
+                        './Training Data/OTUmergedByLevel%d_transpose_isdeleted_%s_threshold_%d.xlsx' % (
+                        targetLevel, str(isdelete), minNum))
+                # print("This is traindata: ", trainData )
+                # tempTrain = trainData.values
+                # print("This is  tempTrain: ", tempTrain )
                 # Three options!!!! For preprocessing normalization
-                # normalized_trainData = preprocessing.normalize(trainData) #1
-                # normalized_trainData = preprocessing.scale(trainData) #2
-                normalized_trainData = preprocessing.MinMaxScaler().fit_transform(trainData)  # 3
+                # normalized_trainData = preprocessing.normalize(trainData.values,axis=0) #1
+                # normalized_trainData = preprocessing.scale(trainData,axis=0)  # 2
+                # normalized_trainData = preprocessing.minmax_scale(trainData,axis=0)  # 3
 
-                trainData[targetList[i]] = subCol.values  # this data will be used to test the efficiency of ELM and RF
-                # print("This is trainData:", trainData)
-                errorSVR = paramSVR.supportVectorM(normalized_trainData, subCol, iteraNum, targetNormal, isRegression)
-                print("This is svr error: ", errorSVR)
-                print("SVR Part %d DONE!" % (dataFile.index(fileName) + 1))
-                finalErrorSVR.extend(errorSVR)
+                # without Normalization
+                # normalized_trainData = trainData
+                for component in componentsList:
+                    lableList += iteraNum * [component]
+                    errorNN = []
+                    errorRF = []
+                    errorSVR = []
+                    errorELM = []
+                    sizeName = component
+                    n_components = component
 
-                errorRF = paramSVR.randomForest(normalized_trainData, subCol, iteraNum, targetNormal, isRegression)
-                print("This is rf error: ", errorRF)
-                print("RF Part %d DONE!" % (dataFile.index(fileName) + 1))
-                finalErrorRF.extend(errorRF)
+                    """Training and Testing"""
 
-                tempData = pd.DataFrame(normalized_trainData)
-                tempData[targetList[i]] = subCol.values
-                cols = tempData.columns.tolist()
-                cols = cols[-1:] + cols[:-1]
-                newtrainData = tempData[cols].values
-                # print ("This is newtrainData: ", newtrainData)
-                errorELM = tempELM.buildELM(newtrainData, iteraNum, targetNormal, isRegression)
-                print("This is EML error: ", errorELM)
-                print("ELM Part %d DONE!" % (dataFile.index(fileName) + 1))
-                finalErrorELM.extend(errorELM)
+                    # errorSVR = paramSVR.supportVectorM(normalized_trainData, subCol, iteraNum, targetNormal,
+                    #                                    isRegression, isPCA, n_components)
+                    # print("This is svr error: ", errorSVR)
+                    # print("SVR Part %d DONE!" % (componentsList.index(component) + 1))
+                    # finalErrorSVR.extend(errorSVR)
+                    #
+                    # errorRF = paramSVR.randomForest(normalized_trainData, subCol, iteraNum, targetNormal, isRegression,
+                    #                                 isPCA, n_components)
+                    # print("This is rf error: ", errorRF)
+                    # print("RF Part %d DONE!" % (componentsList.index(component) + 1))
+                    # finalErrorRF.extend(errorRF)
+
+                    # tempData = pd.DataFrame(normalized_trainData)
+                    tempData = trainData
+                    tempData[targetList[i]] = subCol.values
+                    cols = tempData.columns.tolist()
+                    cols = cols[-1:] + cols[:-1]
+                    newtrainData = tempData[cols].values
+                    # print ("This is newtrainData: ", newtrainData)
+                    errorELM = tempELM.buildELM(newtrainData, iteraNum, targetNormal, isRegression, isPCA, n_components,
+                                                2)
+                    print("This is EML error: ", errorELM)
+                    print("ELM Part %d DONE!" % (componentsList.index(component) + 1))
+                    finalErrorELM.extend(errorELM)
+                    # testAlgorithms(True, typeTrainDB, lableList, iteraNum, finalErrorSVR, finalErrorRF, finalErrorELM,
+                    #                figureTitle)
+                    # if not targetNormal:
+                    #     y = subCol.values
+                    #     # if not use normalized target variables
+                    #     errorNN = testDL.buildDeepLearning(normalized_trainData, y, iteraNum, funNum)
+                    # # Using normalized target variables
+                    # else:
+                    #     errorNN = testDL.buildDeepLearning(normalized_trainData, subCol, iteraNum, funNum)
+                    # print("This is Deep Learning error: ", errorNN)
+                    # print("DL Part %d DONE!" % (i + 1))
+                    # finalErrorNN.extend(errorNN)
+                    # x_axis_name = sorted(list(set(lableList)), reverse=True)
+                    # if isRemote:
+                    #     writer1 = pd.ExcelWriter(
+                    #         './Results/remoteResultForPlot_%s_type_%d_iteration_%d.xlsx' % (
+                    #             targetList[i], typeTrainDB, iteraNum))
+                    #     pd.DataFrame(lableList).to_excel(writer1, 'sheet1')
+                    #     pd.DataFrame(finalErrorSVR).to_excel(writer1, 'sheet2')
+                    #     pd.DataFrame(finalErrorRF).to_excel(writer1, 'sheet3')
+                    #     pd.DataFrame(finalErrorELM).to_excel(writer1, 'sheet4')
+                    #     # pd.DataFrame(finalErrorNN).to_excel(writer1, 'sheet5')
+                    #     pd.DataFrame(x_axis_name).to_excel(writer1, 'sheet6')
+                    #     pd.DataFrame(figureTitle.split(' ')).to_excel(writer1, 'sheet7')
+                    #     writer1.save()
+                    # else:
+                    #     trace1 = {
+                    #         "x": lableList,
+                    #         "y": finalErrorSVR,
+                    #         "line": {"color": "rgba(102,194,165,1)"},
+                    #         "name": "SVR",
+                    #         "type": "box",
+                    #         "xaxis": "x",
+                    #         "yaxis": "y"
+                    #     }
+                    #     trace2 = {
+                    #         "x": lableList,
+                    #         "y": finalErrorRF,
+                    #         "line": {"color": "rgba(141,160,203,1)"},
+                    #         "name": "Random Forest",
+                    #         "type": "box",
+                    #         "xaxis": "x",
+                    #         "yaxis": "y"
+                    #     }
+                    #     # trace3 = {
+                    #     #     "x": lableList,
+                    #     #     "y": finalErrorNN,
+                    #     #     "line": {"color": "rgba(181,130,233,1)"},
+                    #     #     "name": "Deep Learning",
+                    #     #     "type": "box",
+                    #     #     "xaxis": "x",
+                    #     #     "yaxis": "y"
+                    #     # }
+                    #     trace4 = {
+                    #         "x": lableList,
+                    #         "y": finalErrorELM,
+                    #         "line": {"color": "rgba(121,110,193,1)"},
+                    #         "name": "ELM",
+                    #         "type": "box",
+                    #         "xaxis": "x",
+                    #         "yaxis": "y"
+                    #     }
+                    #     data = Data([trace1, trace2, trace4])
+                    #     layout = {
+                    #         "boxmode": "group",
+                    #         "margin": {
+                    #             "r": 10,
+                    #             "t": 25,
+                    #             "b": 40,
+                    #             "l": 60
+                    #         },
+                    #         "title": figureTitle,
+                    #         "xaxis": {
+                    #             "categoryarray": x_axis_name,
+                    #             "categoryorder": "array",
+                    #             "domain": [0, 1],
+                    #             "title": targetList[i],
+                    #             "type": "category"
+                    #         },
+                    #         "yaxis": {
+                    #             "domain": [0, 1],
+                    #             "title": "RMSE-Root mean square error"
+                    #         }
+                    #     }
+                    #     fig = Figure(data=data, layout=layout)
+                    #     plot_url = py.plot(fig)
+                    # end = time.time()
+                    # print("Time: %d seconds " % int((end - start)))
+            else:
+                for fileName in dataFile:
+                    sizeName = fileName
+                    lableList += iteraNum * [str(fileName / 1000.0)]
+                    errorNN = []
+                    errorRF = []
+                    errorSVR = []
+                    errorELM = []
+                    n_components = 1
+                    x_axis_name = ['SVR', 'Random Forest']
+                    if typeTrainDB == 1:
+                        trainData = pd.read_excel(
+                            './Training Data/newWaterSamples_%d.xlsx' % fileName)
+                    elif typeTrainDB == 2:
+                        trainData = pd.read_excel(
+                            './Training Data/easy_get_para.xlsx')
+                    elif typeTrainDB == 3:
+                        trainData = pd.read_excel(
+                            './Training Data/OTUwithEasyPara_%d.xlsx' % fileName)  # Use easy parameters as training data
+                    elif typeTrainDB == 4:
+                        trainData = pd.read_excel(
+                            './Training Data/OTUmergedByLevel%d_transpose_isdeleted_%s_threshold_%d_111.xlsx' % (
+                                targetLevel, str(isdelete), minNum))
+
+                    errorSVR = paramSVR.supportVectorM(trainData, subCol, iteraNum, targetNormal,
+                                                       isRegression, isPCA, n_components, normalMethod,0.2)
+                    print("This is svr error: ", errorSVR)
+                    print("SVR Part %d DONE!" % (dataFile.index(fileName) + 1))
+                    finalErrorSVR.extend(errorSVR)
+
+                    errorRF = paramSVR.randomForest(trainData, subCol, iteraNum, targetNormal, isRegression, isPCA,
+                                                    n_components, normalMethod,0.2)
+                    print("This is rf error: ", errorRF)
+                    print("RF Part %d DONE!" % (dataFile.index(fileName) + 1))
+                    finalErrorRF.extend(errorRF)
+
+                    tempData = trainData
+                    tempData[targetList[i]] = subCol.values
+                    cols = tempData.columns.tolist()
+                    cols = cols[-1:] + cols[:-1]
+                    newtrainData = tempData[cols].values
+                    # print ("This is newtrainData: ", newtrainData)
+                    errorELM = tempELM.buildELM(newtrainData, iteraNum, targetNormal, isRegression, isPCA, n_components,normalMethod)
+                    print("This is EML error: ", errorELM)
+                    print("ELM Part %d DONE!" % (dataFile.index(fileName) + 1))
+                    finalErrorELM.extend(errorELM)
+                # writer1 = pd.ExcelWriter(
+                #     './Results/remoteResultForPlot_%s_type_%d_easy-get-param_size_%d.xlsx' % (
+                #         targetList[0], typeTrainDB, dataFile[0]))
+                # pd.DataFrame(lableList).to_excel(writer1, 'sheet1')
+                # pd.DataFrame(finalErrorSVR).to_excel(writer1, 'sheet2')
+                # pd.DataFrame(finalErrorRF).to_excel(writer1, 'sheet3')
+                # pd.DataFrame(x_axis_name).to_excel(writer1, 'sheet5')
+                # pd.DataFrame(figureTitle.split(' ')).to_excel(writer1, 'sheet6')
+                # writer1.save()
+                # testAlgorithms(False, typeTrainDB, lableList, iteraNum, finalErrorSVR, finalErrorRF, finalErrorELM,
+                #                figureTitle)
 
                 # if not targetNormal:
                 #     y = subCol.values
@@ -603,17 +870,17 @@ if __name__ == '__main__':
                 # print("This is Deep Learning error: ", errorNN)
                 # print("DL Part %d DONE!" % (i + 1))
                 # finalErrorNN.extend(errorNN)
-            if typeTrainDB == 2:
-                temp1 = list(set(lableList))
-                x_axis_name = [(temp1.index(p) + 1) for p in temp1]
-                # lableList = x_axis_name
-            else:
-                x_axis_name = sorted(list(set(lableList)), reverse=True)
-
-                # if typeTrainDB != 2:
+                # if typeTrainDB == 2:
+                #     temp1 = list(set(lableList))
+                #     x_axis_name = [(temp1.index(p) + 1) for p in temp1]
+                #     # lableList = x_axis_name
+                # else:
+                #     x_axis_name = sorted(list(set(lableList)), reverse=True)
+                #
+                # if isRemote:
                 #     writer1 = pd.ExcelWriter(
-                #         './Training Data/remoteResultForPlot_%s_type_%d_size_%d.xlsx' % (
-                #         targetList[i], typeTrainDB, sizeName))
+                #         './Results/remoteResultForPlot_%s_type_%d_iteration_%d.xlsx' % (
+                #             targetList[i], typeTrainDB, iteraNum))
                 #     pd.DataFrame(lableList).to_excel(writer1, 'sheet1')
                 #     pd.DataFrame(finalErrorSVR).to_excel(writer1, 'sheet2')
                 #     pd.DataFrame(finalErrorRF).to_excel(writer1, 'sheet3')
@@ -623,66 +890,66 @@ if __name__ == '__main__':
                 #     pd.DataFrame(figureTitle.split(' ')).to_excel(writer1, 'sheet7')
                 #     writer1.save()
                 # else:
-            trace1 = {
-                "x": lableList,
-                "y": finalErrorSVR,
-                "line": {"color": "rgba(102,194,165,1)"},
-                "name": "SVR",
-                "type": "box",
-                "xaxis": "x",
-                "yaxis": "y"
-            }
-            trace2 = {
-                "x": lableList,
-                "y": finalErrorRF,
-                "line": {"color": "rgba(141,160,203,1)"},
-                "name": "Random Forest",
-                "type": "box",
-                "xaxis": "x",
-                "yaxis": "y"
-            }
-            # trace3 = {
-            #     "x": lableList,
-            #     "y": finalErrorNN,
-            #     "line": {"color": "rgba(181,130,233,1)"},
-            #     "name": "Deep Learning",
-            #     "type": "box",
-            #     "xaxis": "x",
-            #     "yaxis": "y"
-            # }
-            trace4 = {
-                "x": lableList,
-                "y": finalErrorELM,
-                "line": {"color": "rgba(121,110,193,1)"},
-                "name": "ELM",
-                "type": "box",
-                "xaxis": "x",
-                "yaxis": "y"
-            }
-            data = Data([trace1, trace2, trace4])
-            layout = {
-                "boxmode": "group",
-                "margin": {
-                    "r": 10,
-                    "t": 25,
-                    "b": 40,
-                    "l": 60
-                },
-                # "title": "The reliability of ELM and Random Forest",
-                "title": figureTitle,
-                "xaxis": {
-                    "categoryarray": x_axis_name,
-                    "categoryorder": "array",
-                    "domain": [0, 1],
-                    "title": targetList[i],
-                    "type": "category"
-                },
-                "yaxis": {
-                    "domain": [0, 1],
-                    "title": "RMSE-Root mean square error"
-                }
-            }
-            fig = Figure(data=data, layout=layout)
-            plot_url = py.plot(fig)
-        end = time.time()
-        print("Time: %d seconds " % int((end - start)))
+                #     trace1 = {
+                #         "x": lableList,
+                #         "y": finalErrorSVR,
+                #         "line": {"color": "rgba(102,194,165,1)"},
+                #         "name": "SVR",
+                #         "type": "box",
+                #         "xaxis": "x",
+                #         "yaxis": "y"
+                #     }
+                #     trace2 = {
+                #         "x": lableList,
+                #         "y": finalErrorRF,
+                #         "line": {"color": "rgba(141,160,203,1)"},
+                #         "name": "Random Forest",
+                #         "type": "box",
+                #         "xaxis": "x",
+                #         "yaxis": "y"
+                #     }
+                #     # trace3 = {
+                #     #     "x": lableList,
+                #     #     "y": finalErrorNN,
+                #     #     "line": {"color": "rgba(181,130,233,1)"},
+                #     #     "name": "Deep Learning",
+                #     #     "type": "box",
+                #     #     "xaxis": "x",
+                #     #     "yaxis": "y"
+                #     # }
+                #     trace4 = {
+                #         "x": lableList,
+                #         "y": finalErrorELM,
+                #         "line": {"color": "rgba(121,110,193,1)"},
+                #         "name": "ELM",
+                #         "type": "box",
+                #         "xaxis": "x",
+                #         "yaxis": "y"
+                #     }
+                #     data = Data([trace1, trace2, trace4])
+                #     layout = {
+                #         "boxmode": "group",
+                #         "margin": {
+                #             "r": 10,
+                #             "t": 25,
+                #             "b": 40,
+                #             "l": 60
+                #         },
+                #         # "title": "The reliability of ELM and Random Forest",
+                #         "title": figureTitle,
+                #         "xaxis": {
+                #             "categoryarray": x_axis_name,
+                #             "categoryorder": "array",
+                #             "domain": [0, 1],
+                #             "title": targetList[i],
+                #             "type": "category"
+                #         },
+                #         "yaxis": {
+                #             "domain": [0, 1],
+                #             "title": "RMSE-Root mean square error"
+                #         }
+                #     }
+                #     fig = Figure(data=data, layout=layout)
+                #     plot_url = py.plot(fig)
+                # end = time.time()
+                # print("Time: %d seconds " % int((end - start)))

@@ -6,7 +6,7 @@ import csv
 import pandas as pd
 
 df = pd.read_excel('../Training Data/NumberNullWithNull.xlsx')
-zeroNum = 0.01  # percentage of non zero - Upper limit 非零的数据量比例不低于 该值
+zeroNum = 0  # percentage of non zero - Upper limit
 sizeNum = (1 - zeroNum) * 1000
 trainData = pd.read_excel(
     '../Training Data/OTU_Transpose_by_ratio_%d.xlsx' % sizeNum)

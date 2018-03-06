@@ -7,27 +7,25 @@ from sklearn.linear_model import LinearRegression
 from sklearn import metrics
 from sklearn import cross_validation
 from sklearn import preprocessing
+from sklearn.metrics import r2_score
 from sklearn.svm import SVR
 from sklearn.naive_bayes import GaussianNB
+from sklearn.model_selection import GridSearchCV
 import numpy as np
 import matplotlib.pyplot as plt
 import os.path
-import tempELM
-import paramSVR
-import elm
-from hpelm import ELM
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.model_selection import train_test_split
 from sklearn.multioutput import MultiOutputRegressor
 from sklearn.metrics import accuracy_score
 import plotly.plotly as py
 from plotly.graph_objs import *
-import deepLearningTest
-from keras.models import Sequential
-from keras.layers import Dense
+
 
 # py.sign_in('sunjiannankai', 'r8kdW8nbxiw5HJeCehBj')
-py.sign_in('JianSun', 'AmAEUGYZCUR2D1dxFCZk')
+
+# py.sign_in('JianSun', 'AmAEUGYZCUR2D1dxFCZk')
+py.sign_in('eddyrain','nzUXim14zjLU5cwWKtC0')
 
 # py.sign_in('JianSun', 'AmAEUGYZCUR2D1dxFCZk')
 
@@ -95,35 +93,35 @@ py.sign_in('JianSun', 'AmAEUGYZCUR2D1dxFCZk')
 #     return y_pred
 
 
-def buildELM(X_train, y_train, X_test, y_test, target):
-    tempData = pd.DataFrame(X_train)
-    tempData[target] = y_train.values
-    cols = tempData.columns.tolist()
-    cols = cols[-1:] + cols[:-1]
-    newtrainData = tempData[cols].values
-
-    tempData1 = pd.DataFrame(X_test)
-    tempData1[target] = y_test.values
-    cols1 = tempData1.columns.tolist()
-    cols1 = cols[-1:] + cols[:-1]
-    testData = tempData1[cols1].values
-
-    elmr = elm.ELMKernel()
-    # search for best parameter for this dataset
-    # define "kfold" cross-validation method, "accuracy" as a objective function
-    # to be optimized and perform 10 searching steps.
-    # best parameters will be saved inside 'elmk' object
-    elmr.search_param(newtrainData, eval=50, cv='kfold')
-
-    # split data in training and testing sets
-    # use 80% of dataset to training and shuffle data before splitting
-
-    # train and test
-    # results are Error objects
-    tr_result = elmr.train(newtrainData)
-    te_result = elmr.test(testData)
-    y_test_list = te_result.expected_targets
-    return te_result.predicted_targets
+# def buildELM(X_train, y_train, X_test, y_test, target):
+#     tempData = pd.DataFrame(X_train)
+#     tempData[target] = y_train.values
+#     cols = tempData.columns.tolist()
+#     cols = cols[-1:] + cols[:-1]
+#     newtrainData = tempData[cols].values
+#
+#     tempData1 = pd.DataFrame(X_test)
+#     tempData1[target] = y_test.values
+#     cols1 = tempData1.columns.tolist()
+#     cols1 = cols[-1:] + cols[:-1]
+#     testData = tempData1[cols1].values
+#
+#     elmr = elm.ELMKernel()
+#     # search for best parameter for this dataset
+#     # define "kfold" cross-validation method, "accuracy" as a objective function
+#     # to be optimized and perform 10 searching steps.
+#     # best parameters will be saved inside 'elmk' object
+#     elmr.search_param(newtrainData, eval=50, cv='kfold')
+#
+#     # split data in training and testing sets
+#     # use 80% of dataset to training and shuffle data before splitting
+#
+#     # train and test
+#     # results are Error objects
+#     tr_result = elmr.train(newtrainData)
+#     te_result = elmr.test(testData)
+#     y_test_list = te_result.expected_targets
+#     return te_result.predicted_targets
 
 
 def drawFigure(predValue, realValue, methodName, paraName, datasize):
@@ -329,20 +327,21 @@ if __name__ == '__main__':
     targetNormal = False  # the target is normalized or not
     # targetList = ['O2', 'NO2', 'NO3', 'PO4', 'SiO2']
     # targetList = ['PO4']
-    targetList = ['salinity']
+    targetList = ['O2']
 
     # targetList = ['salinity']
     dataFile = [750]  # the max percentage of zeors
     # dataFile = [990, 975, 965, 950, 900]
     # fillByKnn = pd.read_excel('./Training Data/FillByKnn.xlsx')
     waterNoNull = pd.read_excel('./Training Data/WaterSamplesNoNull.xlsx')
-
-    # print("This is target value: ", y)
+    normalMethod = 2  # 1, normalization, 2, scale, 3, minmaxscale
+    isKernel = True
+    kernelFunc = 'rbf'
     for fileName in dataFile:
         # trainData = pd.read_excel(
         #     './Training Data/OTU_Transpose_by_ratio_%d.xlsx' % fileName)  # all input no environmental parameters
         trainData = pd.read_excel(
-            './Training Data/newWaterSamples_%d.xlsx' % fileName)
+            './Training Data/newWaterSamples_%d_easy_get.xlsx' % fileName)
         featureDim = trainData.shape[1]
         normalized_trainData = preprocessing.MinMaxScaler().fit_transform(trainData)  # 3
         # percentage of zeros
@@ -351,41 +350,60 @@ if __name__ == '__main__':
             # subCol = fillByKnn.loc[:, target]
             subCol = waterNoNull.loc[:, target]
             y = subCol.values
+            print("This is y: ", y)
             if targetNormal:
                 subCol = preprocessing.MinMaxScaler().fit_transform(subCol)
-            X_train, X_test, y_train, y_test = train_test_split(normalized_trainData, y, test_size=0.2)
-            # print("This is y_test: ", y_test)
+            X_train, X_test, y_train, y_test = train_test_split(trainData, y, test_size=0.2)
+            print("This is y_test: ", y_test)
+
             # Comparing different algorithms
-            # 1. SVR
-            predSVR = paramSVR.supportVectorM(X_train, y_train, X_test)
-            print("This is svr : ", predSVR)
-            print("SVR Part DONE!")
-            drawFigure(predSVR, y_test, "SVR", target, str(fileName))
-            # # 2. RF
-            predRF = paramSVR.randomForest(X_train, y_train, X_test)
-            print("This is rf pred value: ", predRF)
-            print("RF Part DONE!")
-            drawFigure(predRF, y_test, "RF", target, str(fileName))
+            # 1.RF
+            param_test1 = {'n_estimators': range(10, 401, 10)}
+            regr_rf = GridSearchCV(estimator=RandomForestRegressor(),
+                                   param_grid=param_test1, cv=5, n_jobs=1)
+            # regr_rf = RandomForestRegressor(n_estimators=numTree, max_depth=max_depth,oob_score=True)
+            regr_rf.fit(X_train, y_train)
+            print("The best parameters are %s with a score of %0.2f"
+                  % (regr_rf.best_params_, regr_rf.best_score_))
+            # Predict on new data
+            y_pred_rf = regr_rf.predict(X_test)
 
-            # 3. ELM
-            predELM = buildELM(X_train, y_train, X_test, y_test, target)
-            print("This is ELM pred value: ", predELM)
-            print("ELM Part DONE!")
-            drawFigure(predRF, y_test, "RF", target, str(fileName))
+            coefficient_of_dermination_rf = r2_score(y_test, y_pred_rf)
 
-            # 4. DeepLearning
-            # tempDL = deepLearning(X_train, y_train, X_test)
-            # predDL = tempDL.T.tolist()
-            # predDL = predDL[0]
-            # print("This is DL pred value:: ", predDL)
-            # print("DL Part DONE!")
-            # print("This is y_test :", y_test.tolist())
-            # drawFigure(predDL, y_test.tolist(), "DL", target, str(fileName))
+            # 2. SVR
+
+            sc = preprocessing.StandardScaler()
+            X_train_std = sc.fit_transform(X_train)
+            X_test_std = sc.transform(X_test)
+
+            C_range = np.logspace(-1, 4, num=12)
+            gamma_range = np.logspace(-4, 4, num=12)  # best 0.1/1
+            svr_rbf = GridSearchCV(SVR(kernel='rbf'), cv=5,
+                                   param_grid={"C": C_range,
+                                               "gamma": gamma_range}, n_jobs=1)
+            svr_rbf.fit(X_train_std, y_train)
+            print("The best parameters are %s with a score of %0.2f"
+                  % (svr_rbf.best_params_, svr_rbf.best_score_))
+            y_pred_temp_svr = svr_rbf.predict(X_test_std)
+            y_pred_svr = []
+            for t in y_pred_temp_svr:
+                if t < 0:
+                    y_pred_svr.append(0)
+                else:
+                    y_pred_svr.append(t)
+            coefficient_of_dermination_svr = r2_score(y_test, y_pred_svr)
+
+            print("This is r values: ", coefficient_of_dermination_rf, coefficient_of_dermination_svr)
+
+
+            r_values_rf = "R<sup>2</sup>= " + str(coefficient_of_dermination_rf)
+            r_values_svr = "R<sup>2</sup>= " + str(coefficient_of_dermination_svr)
+            r_values = "R<sup>2</sup> for SVR:" + str(coefficient_of_dermination_svr) + " AND " + "R<sup>2</sup> for RF:" + str(coefficient_of_dermination_rf)
             # draw the figure
-            x_title = "Real Value " + " ( Parameter: " + str(target) + " Size: " + str(fileName) + ")"
+            x_title = "Real Value " + "(" + str(target) + ")" + "threshold: " + str(zeroPer)
             trace1 = {
                 "x": y_test,
-                "y": predSVR,
+                "y": y_pred_svr,
                 "marker": {
                     "color": "rgb(255,127, 14)",
                     "opacity": 0.55,
@@ -395,10 +413,11 @@ if __name__ == '__main__':
                 "mode": "markers",
                 "name": "SVR",
                 "type": "scatter",
+
             }
             trace2 = {
                 "x": y_test,
-                "y": predRF,
+                "y": y_pred_rf,
                 "marker": {
                     "color": "rgb( 44,160, 40)",
                     "opacity": 0.55,
@@ -408,33 +427,8 @@ if __name__ == '__main__':
                 "mode": "markers",
                 "name": "RF",
                 "type": "scatter",
+
             }
-            trace3 = {
-                "x": y_test,
-                "y": predELM,
-                "marker": {
-                    "color": "rgb( 31,119,180)",
-                    "opacity": 0.55,
-                    "sizemode": "area",
-                    "sizeref": 0.01,
-                },
-                "mode": "markers",
-                "name": "ELM",
-                "type": "scatter",
-            }
-            # trace4 = {
-            #     "x": y_test,
-            #     "y": predDL,
-            #     "marker": {
-            #         "color": "rgb(148,103,189)",
-            #         "opacity": 0.55,
-            #         "sizemode": "area",
-            #         "sizeref": 0.01,
-            #     },
-            #     "mode": "markers",
-            #     "name": "Deep Learning",
-            #     "type": "scatter",
-            # }
             trace5 = {
                 "x": y_test,
                 "y": y_test,
@@ -442,14 +436,24 @@ if __name__ == '__main__':
                     "color": "#7FDBFF",
                     "dash": "dot"
                 },
-                "name": "y=x",
+                "name": "Real values",
                 "type": "scatter",
             }
-            data = Data([trace1, trace2, trace3, trace5])
+            data = Data([trace1, trace2, trace5])
             layout = {
+                "annotations": [
+                    {
+                        "showarrow": False,
+                        "text": r_values,
+                        "xanchor": "auto",
+                        "xref": "x",
+                        "yanchor": "auto",
+                        "yref": "y"
+                    }
+                ],
                 "autosize": False,
                 "height": 800,
-                "title": "Relation: SVR,RF and DL",
+                "title": "The fitting degree for both SVR and RF",
                 "titlefont": {
                     "color": "#000000",
                     "family": "Courier New, monospace",
@@ -465,7 +469,7 @@ if __name__ == '__main__':
                     }
                 },
                 "yaxis": {
-                    "title": "Prediction",
+                    "title": "Prediction value",
                     "titlefont": {
                         "color": "#000000",
                         "family": "Courier New, monospace",

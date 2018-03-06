@@ -10,8 +10,8 @@ from sklearn.metrics import mean_squared_error
 import plotly.plotly as py
 import matplotlib.pyplot as plt
 
-py.sign_in('sunjiannankai', 'r8kdW8nbxiw5HJeCehBj')
-
+# py.sign_in('sunjiannankai', 'r8kdW8nbxiw5HJeCehBj')
+py.sign_in('JianSun', 'AmAEUGYZCUR2D1dxFCZk')
 
 # define the models and configure the learning process
 def baseline_model(inputDim):
